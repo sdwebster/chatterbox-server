@@ -12,12 +12,12 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 
+//give requestHandler this closure variable. When we create a new server with a call to
+//requestHandler, that server can start accumulating a memory store of POSTS
 var allMessages = [];
-allMessages.push({
-        username: 'Marcus',
-        text: ('GET me if you can'),
-        roomname: 'lobby'
-      });
+// NOTE: if you want the serer to work on the first try without running any tests, you
+// have to create a dummy message here and push it into allMessages so there will be
+// at least one message
 
 var requestHandler = function(request, response) {
 
@@ -37,9 +37,6 @@ var requestHandler = function(request, response) {
   // console.logs in your code.
   console.log("Serving request type " + request.method + " for url " + request.url);
 
-  // The outgoing status.
-  var statusCode = 200;
-
   // See the note below about CORS headers.
   var headers = defaultCorsHeaders;
 
@@ -51,43 +48,51 @@ var requestHandler = function(request, response) {
 
   // .writeHead() writes to the request line and headers of the response,
   // which includes the status and all headers.
-  response.writeHead(statusCode, headers);
-  console.log('wrote head');
 
-  var serverResponse = '';
-  if (request.method === "DELETE"){
+  //Default value response back to client
+  var serverResponse = {};
 
-  } else if (request.method === "GET"){
-    console.log('allMessages:', allMessages);
-    serverResponse = {
-      results: allMessages
-    };
-  } else if (request.method === "POST"){
-    var jsonString = '';
-    request.on('data', function (chunk){
-      jsonString += chunk;
-    })
-    console.log(jsonString);
-    request.on('end', function(){
-      console.log('post: ', jsonString);
-      var newMessage = JSON.parse(jsonString);
-      newMessage.objectId = allMessages.length;
-      allMessages.push(newMessage);
-      console.log('allMessages:', allMessages);
-    });
-
-    // serverResponse = 'posted';
-
-  } else if (request.method === "PUT"){
-
-  } else if (request.method === "OPTIONS"){
-    serverResponse = "Options!";
-
+  //Tests for valid URL
+  if (request.url.substring(0,9) !== '/classes/') {
+    //Add 404 status code for failed request
+    response.writeHead(404, headers);
+    response.end('');
   } else {
-    // not a valid method
-  }
-  response.write(JSON.stringify(serverResponse));
+    if (request.method === "DELETE"){
 
+    } else if (request.method === "GET"){
+      //Add 200 status code for GET request
+      response.writeHead(200, headers);
+      //Add data to response
+      serverResponse = {
+        results: allMessages
+      };
+    } else if (request.method === "POST"){
+      response.writeHead(201, headers);
+      //As POSTed data comes in, build up a string with the message details
+      var jsonString = '';
+      request.on('data', function (chunk){
+        jsonString += chunk;
+      });
+
+      //When entire string received, parse string into a js object
+      request.on('end', function(){
+        var newMessage = JSON.parse(jsonString);
+        // Assign objectId so that client can detect whether posts have changed and need to be re-rendered
+        newMessage.objectId = allMessages.length;
+        allMessages.push(newMessage);
+
+      });
+    } else if (request.method === "PUT"){
+      response.writeHead(201, headers);
+
+    } else if (request.method === "OPTIONS"){
+      response.writeHead(201, headers);
+
+    } else {
+      response.writeHead(404, headers);
+    }
+  }
   // Make sure to always call response.end() - Node may not send
   // anything back to the client until you do. The string you pass to
   // response.end() will be the body of the response - i.e. what shows
@@ -95,8 +100,7 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-  // console.log(veggie);
-  response.end('');
+  response.end(JSON.stringify(serverResponse));
 };
 
 // These headers will allow Cross-Origin Resource Sharing (CORS).
@@ -115,6 +119,4 @@ var defaultCorsHeaders = {
   "access-control-max-age": 10 // Seconds.
 };
 
-
-exports.handleRequest = requestHandler;
-// exports.defaultCorsHeaders = defaultCorsHeaders;
+exports.requestHandler = requestHandler;
