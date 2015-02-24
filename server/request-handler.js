@@ -12,7 +12,15 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 
+var allMessages = [];
+allMessages.push({
+        username: 'Marcus',
+        text: ('GET me if you can'),
+        roomname: 'lobby'
+      });
+
 var requestHandler = function(request, response) {
+
   // Request and Response come from node's http module.
   //
   // They include information about both the incoming request, such as
@@ -47,18 +55,38 @@ var requestHandler = function(request, response) {
   console.log('wrote head');
 
   var serverResponse = '';
-  if (request.method === "OPTIONS"){
-    serverResponse = "Options!";
+  if (request.method === "DELETE"){
+
   } else if (request.method === "GET"){
+    console.log('allMessages:', allMessages);
     serverResponse = {
-      results:
-        [{
-        username: 'Marcus',
-        text: 'GET me if you can',
-        roomname: 'lobby'
-      }]
+      results: allMessages
     };
+  } else if (request.method === "POST"){
+    var jsonString = '';
+    request.on('data', function (chunk){
+      jsonString += chunk;
+    })
+    console.log(jsonString);
+    request.on('end', function(){
+      console.log('post: ', jsonString);
+      var newMessage = JSON.parse(jsonString);
+      newMessage.objectId = allMessages.length;
+      allMessages.push(newMessage);
+      console.log('allMessages:', allMessages);
+    });
+
+    // serverResponse = 'posted';
+
+  } else if (request.method === "PUT"){
+
+  } else if (request.method === "OPTIONS"){
+    serverResponse = "Options!";
+
+  } else {
+    // not a valid method
   }
+  response.write(JSON.stringify(serverResponse));
 
   // Make sure to always call response.end() - Node may not send
   // anything back to the client until you do. The string you pass to
@@ -67,8 +95,7 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-
-  response.write(JSON.stringify(serverResponse) /*unction(data){return JSON.parse(data)}*/ );
+  // console.log(veggie);
   response.end('');
 };
 
@@ -87,6 +114,7 @@ var defaultCorsHeaders = {
   "access-control-allow-headers": "content-type, accept",
   "access-control-max-age": 10 // Seconds.
 };
+
 
 exports.handleRequest = requestHandler;
 // exports.defaultCorsHeaders = defaultCorsHeaders;
